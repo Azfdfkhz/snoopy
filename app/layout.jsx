@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Snoopy Message Garden",
-  description: "Taman kecil tempat Snoopy menyampaikan pesan, dan kamu bisa membalasnya."
+  title: "Pesan kecil dari Snoopy",
+  description: "Snoopy nitip pesan kecil buat Indy."
 };
 
 export const viewport = {

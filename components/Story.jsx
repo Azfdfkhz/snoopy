@@ -14,6 +14,8 @@ const HEART_CHARS = ["♡", "✦", "♡", "✧"];
 const ASK_DELAY_MS = 1800; // jeda setelah adegan terakhir sebelum popup muncul
 const FLYING_MS = 2600;
 const READING_MS = 2600;
+const TYPE_MS = 24; // jeda per karakter pada efek ketik
+const pad = (n) => String(n).padStart(2, "0");
 
 const TONES = {
   boom: { type: "triangle", gain: 0.09, notes: [[110, 0, 0.22], [75, 0.09, 0.28], [220, 0.12, 0.12]] },
@@ -42,6 +44,9 @@ export default function Story() {
   const [senderName, setSenderName] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(Boolean(STORY_CONFIG.soundEnabled));
   const [sparkles, setSparkles] = useState([]);
+  const [motionOn, setMotionOn] = useState(true); // tombol "Gerakan" (animasi dekoratif)
+  const [reduced, setReduced] = useState(false); // preferensi sistem prefers-reduced-motion
+  const [typed, setTyped] = useState(0); // jumlah karakter pesan yang sudah tampil
   const audioRef = useRef(null);
   const sparkleTimer = useRef(null);
   const soundRef = useRef(soundEnabled);
@@ -71,7 +76,33 @@ export default function Story() {
   }
   if (phase === "declined") view = { ...view, ...finaleBase, animation: "wave", message: finale.declined, caption: "Snoopy melambaikan tangan", hint: "Kamu bisa menulis pesan kapan saja." };
 
+  const chars = Array.from(view.message);
+  const typing = typed < chars.length;
   const percent = inStory ? Math.round(((current + 1) / total) * 100) : 100;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Efek ketik: mulai dari awal setiap pesan berganti. Reduced motion langsung menampilkan semuanya.
+  const messageKey = `${phase}|${scene.id}`;
+  useEffect(() => {
+    const total = Array.from(view.message).length;
+    if (reduced) { setTyped(total); return; }
+    setTyped(0);
+    let n = 0;
+    const id = window.setInterval(() => {
+      n += 1;
+      setTyped(n);
+      if (n >= total) window.clearInterval(id);
+    }, TYPE_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageKey, senderName, reduced]);
 
   useEffect(() => {
     return () => {
@@ -168,7 +199,16 @@ export default function Story() {
     playTone("whoosh");
   }
 
+  function goBack() {
+    if (inStory && current > 0) goTo(current - 1);
+  }
+
   function handlePrimary() {
+    // Saat teks masih diketik, tombol lanjut menyelesaikan teks dulu (lewati animasi).
+    if (typing && (phase === "story" || phase === "thanks" || phase === "declined")) {
+      setTyped(chars.length);
+      return;
+    }
     if (phase === "story") {
       if (isLast) setPhase("ask");
       else goTo(current + 1);
@@ -177,10 +217,12 @@ export default function Story() {
     }
   }
 
-  const primaryLabel = inStory
-    ? isLast ? "Tulis pesan" : "Lanjutkan"
+  const primaryLabel = typing && inStory
+    ? "Tampilkan teks"
+    : inStory
+    ? isLast ? "Balas pesan" : "Lanjutkan"
     : phase === "thanks" ? "Tulis pesan lagi" : "Tulis pesan";
-  const primaryIcon = inStory && !isLast ? "→" : "✉";
+  const primaryIcon = typing && inStory ? "⏩" : inStory && !isLast ? "→" : "✉";
 
   return (
     <>
@@ -189,20 +231,26 @@ export default function Story() {
           <span className="brand-mark" aria-hidden="true">✿</span>
           <span>Snoopy <b>Message Garden</b></span>
         </a>
-        <button className="sound-toggle" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
-          <span aria-hidden="true">{soundEnabled ? "♫" : "♪"}</span>
-          <span>{soundEnabled ? "Suara aktif" : "Suara mati"}</span>
-        </button>
+        <div className="toggles">
+          <button className="sound-toggle" type="button" aria-pressed={motionOn && !reduced} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
+            <span aria-hidden="true">✦</span>
+            <span>{reduced ? "Gerakan dikurangi" : motionOn ? "Gerakan aktif" : "Gerakan mati"}</span>
+          </button>
+          <button className="sound-toggle" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
+            <span aria-hidden="true">{soundEnabled ? "♫" : "♪"}</span>
+            <span>{soundEnabled ? "Suara aktif" : "Suara mati"}</span>
+          </button>
+        </div>
       </header>
 
-      <section className="scene" aria-label="Taman tempat Snoopy menyampaikan pesan">
+      <section className={`scene${motionOn && !reduced ? "" : " motion-off"}`} aria-label="Taman tempat Snoopy menyampaikan pesan">
         <Scenery theme={view.theme} />
         <SceneProps list={view.props} group="scene" />
 
         <div className="scene-heading">
-          <span className="eyebrow">A LITTLE NOTE FOR YOU</span>
-          <h1>Seseorang punya<br /><em>pesan kecil.</em></h1>
-          <p>Dan Snoopy dengan senang hati akan menyampaikannya.</p>
+          <span className="eyebrow">a little note for you</span>
+          <h1>Ada pesan kecil<br /><em>buat Indy.</em></h1>
+          <p>Snoopy yang bakal nyampein. Pelan-pelan aja bacanya.</p>
         </div>
 
         {/* Pembaca layar membaca pesan lewat elemen ini; balon di bawah hanya tampilan. */}
@@ -214,7 +262,10 @@ export default function Story() {
               <polygon points={BURST_POINTS} fill="#fff" stroke="#4b8fd1" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>
           )}
-          <p>{view.message}</p>
+          <p>
+            <span>{chars.slice(0, typed).join("")}</span>
+            <span className="ghost">{chars.slice(typed).join("")}</span>
+          </p>
         </div>
 
         <div className="snoopy-stage" data-animation={view.animation} data-pose={view.pose}>
@@ -236,12 +287,15 @@ export default function Story() {
       <section className="controls" aria-label="Kontrol cerita">
         <div className="progress-wrap">
           <div className="progress-copy">
-            <span>{inStory ? `Adegan ${current + 1} dari ${total}` : "Cerita selesai"}</span>
+            <span>{inStory ? `${pad(current + 1)} / ${pad(total)}` : "Cerita selesai"}</span>
             <span>{percent}%</span>
           </div>
           <div className="progress-track"><span style={{ width: `${percent}%` }} /></div>
         </div>
         <div className="control-row">
+          <button className="secondary-btn" type="button" onClick={goBack} disabled={busy || !inStory || current === 0}>
+            <span aria-hidden="true">←</span> Kembali
+          </button>
           <button className="secondary-btn" type="button" onClick={() => goTo(0)} disabled={busy}>
             <span aria-hidden="true">↺</span> Ulangi
           </button>
