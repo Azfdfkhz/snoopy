@@ -74,3 +74,12 @@ Edit `lib/messages.js`: ganti `PESAN_1` dan `PESAN_2`, serta sesuaikan adegan la
 - Validasi pesan 2–1000 karakter, honeypot, batas ukuran body, dan rate limit sederhana (per instance server).
 - Untuk trafik besar, tambahkan Vercel Firewall atau CAPTCHA.
 - Jangan meminta pengunjung mengirim kata sandi, data finansial, atau informasi pribadi sensitif.
+
+## Integrasi aset PNG Snoopy dan background
+
+- Background utama diambil dari `public/background.png` dan dipasang sebagai layer gambar terpisah.
+- Karakter tidak lagi digambar menggunakan SVG buatan komponen. `components/Snoopy.jsx` memakai PNG transparan di `public/animations/snoopy-frames/png/`.
+- Pergantian pose PNG mengikuti state cerita (idle, walk, dance, wave, surprised, read, sleep, dan lainnya); gerakan ringan seperti bobbing, dance, wave, serta reaksi ditangani oleh CSS.
+- Aset yang belum memiliki pose khusus memakai fallback pose idle. PNG yang digunakan saat ini merupakan pose/ilustrasi terpisah, bukan rangkaian frame penuh untuk setiap animasi.
+
+Jalankan `npm install` lalu `npm run dev` untuk mencoba website secara lokal. Integrasi pengiriman Telegram tetap memerlukan konfigurasi `.env.local` seperti dijelaskan di bagian konfigurasi di atas.

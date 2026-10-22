@@ -228,18 +228,12 @@ export default function Story() {
     <>
       <header className="topbar">
         <a className="brand" href="#" aria-label="Snoopy Message Garden, beranda">
-          <span className="brand-mark" aria-hidden="true">✿</span>
-          <span>Snoopy <b>Message Garden</b></span>
+          <img className="brand-snoopy" src="/animations/snoopy-frames/png/snoopy_01_idle.png" alt="" />
+          <span>Snoopy <b aria-hidden="true">♥</b></span>
         </a>
-        <div className="toggles">
-          <button className="sound-toggle" type="button" aria-pressed={motionOn && !reduced} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
-            <span aria-hidden="true">✦</span>
-            <span>{reduced ? "Gerakan dikurangi" : motionOn ? "Gerakan aktif" : "Gerakan mati"}</span>
-          </button>
-          <button className="sound-toggle" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
-            <span aria-hidden="true">{soundEnabled ? "♫" : "♪"}</span>
-            <span>{soundEnabled ? "Suara aktif" : "Suara mati"}</span>
-          </button>
+        <div className="header-actions">
+          <div className="story-counter" aria-label={`Adegan ${current + 1} dari ${total}`}><span aria-hidden="true">▣</span> {current + 1} / {total}</div>
+          <button className="settings-button" type="button" aria-label="Pengaturan animasi" aria-pressed={!motionOn || reduced} onClick={() => setMotionOn((v) => !v)}>⚙</button>
         </div>
       </header>
 
@@ -270,7 +264,7 @@ export default function Story() {
 
         <div className="snoopy-stage" data-animation={view.animation} data-pose={view.pose}>
           <SceneProps list={view.props} group="stage" />
-          <Snoopy pose={view.pose} held={view.held} backpack={view.backpack} />
+          <Snoopy pose={view.pose} held={view.held} backpack={view.backpack} animation={view.animation} />
           {phase === "flying" && <PaperPlane />}
           <div className="snoopy-caption">{view.caption || "Snoopy"}</div>
         </div>
@@ -285,26 +279,29 @@ export default function Story() {
       </section>
 
       <section className="controls" aria-label="Kontrol cerita">
-        <div className="progress-wrap">
-          <div className="progress-copy">
-            <span>{inStory ? `${pad(current + 1)} / ${pad(total)}` : "Cerita selesai"}</span>
-            <span>{percent}%</span>
-          </div>
-          <div className="progress-track"><span style={{ width: `${percent}%` }} /></div>
-        </div>
         <div className="control-row">
-          <button className="secondary-btn" type="button" onClick={goBack} disabled={busy || !inStory || current === 0}>
-            <span aria-hidden="true">←</span> Kembali
+          <button className="secondary-btn replay-btn" type="button" onClick={() => { goTo(0); setPhase("story"); }} disabled={busy}>
+            <span aria-hidden="true">↻</span> Replay
           </button>
-          <button className="secondary-btn" type="button" onClick={() => goTo(0)} disabled={busy}>
-            <span aria-hidden="true">↺</span> Ulangi
+          <button className="primary-btn next-round-btn" type="button" onClick={handlePrimary} disabled={busy} aria-label={primaryLabel}>
+            <span aria-hidden="true">{primaryIcon === "→" ? "→" : primaryIcon === "⏩" ? "»" : "✉"}</span>
           </button>
-          <button className="primary-btn" type="button" onClick={handlePrimary} disabled={busy}>
-            {primaryLabel} <span aria-hidden="true">{primaryIcon}</span>
+          <button className="secondary-btn skip-btn" type="button" onClick={() => {
+            if (typing) { setTyped(chars.length); return; }
+            if (inStory && !isLast) { goTo(current + 1); return; }
+            handlePrimary();
+          }} disabled={busy}>
+            <span aria-hidden="true">⏭</span> Lewati
           </button>
         </div>
         <p className="hint">{view.hint || ""}</p>
       </section>
+      <button className="motion-toggle floating-pill" type="button" aria-pressed={motionOn && !reduced} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
+        <span aria-hidden="true">🍃</span> {reduced ? "Gerakan dikurangi" : "Animasi " + (motionOn ? "Aktif" : "Mati")} <span className={`toggle-switch${motionOn && !reduced ? " on" : ""}`} aria-hidden="true"><i /></span>
+      </button>
+      <button className="sound-toggle floating-pill sound-pill" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
+        <span aria-hidden="true">♫</span> Suara
+      </button>
 
       {phase === "ask" && (
         <Modal labelledBy="askTitle" onClose={() => setPhase("declined")}>
