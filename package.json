@@ -1,0 +1,20 @@
+{
+  "name": "snoopy-message-garden",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Snoopy Message Garden: Next.js + React, pesan pengunjung diteruskan ke Telegram",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "check": "node check.js"
+  },
+  "dependencies": {
+    "next": "^15.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}

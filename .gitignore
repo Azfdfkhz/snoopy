@@ -1,0 +1,10 @@
+.env
+node_modules/
+.DS_Store
+
+# Next.js
+.next/
+out/
+.env*.local
+next-env.d.ts
+.vercel
