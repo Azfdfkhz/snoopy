@@ -70,7 +70,7 @@ export default function ComposeForm({ onCancel, onSent }) {
           onChange={(e) => setMessage(e.target.value)}
         />
         <div className="form-meta">
-          <span>Snoopy</span>
+          <span>Jangan masukkan kata sandi atau informasi pribadi sensitif.</span>
           <span>{message.length}/{MAX_LENGTH}</span>
         </div>
         <input

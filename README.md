@@ -12,13 +12,17 @@ app/
   api/message/route.js  API: POST kirim pesan, GET cek status
 components/
   Story.jsx             Alur cerita dan fase akhir (popup, pesawat kertas, terima kasih)
-  Snoopy.jsx            Ilustrasi Snoopy (SVG): pose berdiri, duduk, berbaring; ransel dan bom
-  Scenery.jsx           Latar taman bercat air: bukit, pohon, awan, kota, pagar, jalan setapak
-  Props.jsx             Burung kecil, papan pesan, easel, bangku, not musik, "zzz"
+  SnoopyAnimator.jsx    Snoopy dari PNG di /public: pergantian frame + gerak tubuh (CSS)
+  BackgroundScene.jsx   Latar dari /public/background.png: kamera zoom, daun jatuh, kupu-kupu
+  Props.jsx             Woodstock (PNG, berganti frame), not musik, "zzz"
   PaperPlane.jsx        Pesawat kertas
   Modal.jsx             Dialog dengan fokus keyboard dan tombol Esc
   ComposeForm.jsx       Form pesan di dalam popup
+hooks/
+  useFrameLoop.js       Pemutar frame sederhana
 lib/
+  animations.js         Daftar sprite PNG Snoopy + urutan frame tiap animasi
+  backgrounds.js        Daftar gambar latar + "kamera" (zoom/fokus) per theme
   messages.js           Isi cerita dan teks bagian akhir (ganti PESAN_1 dan PESAN_2 di sini)
   telegram.js           Validasi, rate limit, kirim ke Telegram (server saja)
 check.js                Diagnosa koneksi Telegram (npm run check)
@@ -75,11 +79,15 @@ Edit `lib/messages.js`: ganti `PESAN_1` dan `PESAN_2`, serta sesuaikan adegan la
 - Untuk trafik besar, tambahkan Vercel Firewall atau CAPTCHA.
 - Jangan meminta pengunjung mengirim kata sandi, data finansial, atau informasi pribadi sensitif.
 
-## Integrasi aset PNG Snoopy dan background
+## Animasi Snoopy (PNG)
 
-- Background utama diambil dari `public/background.png` dan dipasang sebagai layer gambar terpisah.
-- Karakter tidak lagi digambar menggunakan SVG buatan komponen. `components/Snoopy.jsx` memakai PNG transparan di `public/animations/snoopy-frames/png/`.
-- Pergantian pose PNG mengikuti state cerita (idle, walk, dance, wave, surprised, read, sleep, dan lainnya); gerakan ringan seperti bobbing, dance, wave, serta reaksi ditangani oleh CSS.
-- Aset yang belum memiliki pose khusus memakai fallback pose idle. PNG yang digunakan saat ini merupakan pose/ilustrasi terpisah, bukan rangkaian frame penuh untuk setiap animasi.
+Snoopy tidak lagi SVG. Semua pose ada di `public/animations/snoopy-frames/png/`. Animasi dibuat dua lapis:
 
-Jalankan `npm install` lalu `npm run dev` untuk mencoba website secara lokal. Integrasi pengiriman Telegram tetap memerlukan konfigurasi `.env.local` seperti dijelaskan di bagian konfigurasi di atas.
+1. **Frame**: PNG bergantian sesuai urutan di `lib/animations.js` (berkedip, menari, melambai).
+2. **Gerak tubuh**: napas, melompat, goyang, mengangguk lewat CSS (`globals.css`, selektor `.snoopy-figure[data-anim=...]`).
+
+Menambah pose: taruh PNG di folder di atas, daftarkan di `SPRITES`, lalu pakai di `ANIMATIONS`. Tombol "Gerakan" dan `prefers-reduced-motion` menghentikan semuanya.
+
+## Mengganti background
+
+Ganti `public/background.png` (16:9 disarankan, tanpa Snoopy), atau tambah gambar baru di `BACKGROUNDS` pada `lib/backgrounds.js` lalu arahkan `THEMES` ke gambar itu.

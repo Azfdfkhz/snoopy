@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { STORY_CONFIG } from "../lib/messages.js";
-import Snoopy from "./Snoopy.jsx";
-import Scenery from "./Scenery.jsx";
+import SnoopyAnimator from "./SnoopyAnimator.jsx";
+import BackgroundScene from "./BackgroundScene.jsx";
 import PaperPlane from "./PaperPlane.jsx";
 import { SceneProps } from "./Props.jsx";
 import Modal from "./Modal.jsx";
 import ComposeForm from "./ComposeForm.jsx";
+import SceneDecor from "./SceneDecor.jsx";
+import * as Icon from "./Icons.jsx";
 
 const SPARKLE_CHARS = ["✦", "✧", "·"];
 const HEART_CHARS = ["♡", "✦", "♡", "✧"];
@@ -46,6 +48,7 @@ export default function Story() {
   const [sparkles, setSparkles] = useState([]);
   const [motionOn, setMotionOn] = useState(true); // tombol "Gerakan" (animasi dekoratif)
   const [reduced, setReduced] = useState(false); // preferensi sistem prefers-reduced-motion
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [typed, setTyped] = useState(0); // jumlah karakter pesan yang sudah tampil
   const audioRef = useRef(null);
   const sparkleTimer = useRef(null);
@@ -56,12 +59,13 @@ export default function Story() {
   const isLast = current === total - 1;
   const inStory = phase === "story";
   const busy = phase === "flying" || phase === "reading";
+  const playing = motionOn && !reduced; // false → Snoopy dan dekorasi diam di satu pose
 
   // Tampilan mengikuti adegan, atau fase akhir (pesawat kertas, membaca, terima kasih).
   let view = {
     animation: scene.animation, pose: scene.pose || "stand", theme: scene.theme || "meadow",
     props: scene.props || [], backpack: Boolean(scene.backpack), held: scene.held || "none",
-    bubble: scene.bubble || "normal", message: scene.message, caption: scene.caption, hint: scene.hint
+    bubble: scene.bubble || "normal", title: scene.title, message: scene.message, caption: scene.caption, hint: scene.hint
   };
   const finaleBase = { pose: "stand", props: [], backpack: false, held: "none", bubble: "normal" };
   if (phase === "flying") view = { ...view, ...finaleBase, animation: "surprised", message: finale.flying, caption: "Ada pesawat kertas!", hint: "Pesanmu sedang terbang ke Snoopy." };
@@ -97,7 +101,7 @@ export default function Story() {
     let n = 0;
     const id = window.setInterval(() => {
       n += 1;
-      setTyped(n);
+      setTyped((prev) => Math.max(prev, n)); // tombol "Tampilkan teks" tidak ditimpa lagi oleh efek ketik
       if (n >= total) window.clearInterval(id);
     }, TYPE_MS);
     return () => window.clearInterval(id);
@@ -222,51 +226,69 @@ export default function Story() {
     : inStory
     ? isLast ? "Balas pesan" : "Lanjutkan"
     : phase === "thanks" ? "Tulis pesan lagi" : "Tulis pesan";
-  const primaryIcon = typing && inStory ? "⏩" : inStory && !isLast ? "→" : "✉";
+
+  const typingNow = typing && (phase === "story" || phase === "thanks" || phase === "declined");
+  const progressLabel = inStory ? `${current + 1} / ${total}` : "Selesai";
 
   return (
     <>
-      <header className="topbar">
-        <a className="brand" href="#" aria-label="Snoopy Message Garden, beranda">
-          <img className="brand-snoopy" src="/animations/snoopy-frames/png/snoopy_01_idle.png" alt="" />
-          <span>Snoopy <b aria-hidden="true">♥</b></span>
-        </a>
-        <div className="header-actions">
-          <div className="story-counter" aria-label={`Adegan ${current + 1} dari ${total}`}><span aria-hidden="true">▣</span> {current + 1} / {total}</div>
-          <button className="settings-button" type="button" aria-label="Pengaturan animasi" aria-pressed={!motionOn || reduced} onClick={() => setMotionOn((v) => !v)}>⚙</button>
-        </div>
-      </header>
+      <section className={`scene${playing ? "" : " motion-off"}`} aria-label="Taman tempat Snoopy menyampaikan pesan">
+        <BackgroundScene theme={view.theme} />
+        <SceneDecor />
 
-      <section className={`scene${motionOn && !reduced ? "" : " motion-off"}`} aria-label="Taman tempat Snoopy menyampaikan pesan">
-        <Scenery theme={view.theme} />
-        <SceneProps list={view.props} group="scene" />
-
-        <div className="scene-heading">
-          <span className="eyebrow">a little note for you</span>
-          <h1>Ada pesan kecil<br /><em>buat Indy.</em></h1>
-          <p>Snoopy yang bakal nyampein. Pelan-pelan aja bacanya.</p>
-        </div>
+        {/* ---------- HUD atas ---------- */}
+        <header className="hud-top">
+          <a className="brand" href="#" aria-label="Snoopy, beranda">
+            <span className="brand-avatar"><img src="/animations/snoopy-frames/png/snoopy_01_idle.png" alt="" draggable={false} /></span>
+            <span className="brand-name">Snoopy</span>
+            <span className="brand-heart" aria-hidden="true">♥</span>
+          </a>
+          <div className="hud-right">
+            <div className="progress-pill" role="status" aria-label={inStory ? `Adegan ${current + 1} dari ${total}` : "Cerita selesai"}>
+              <Icon.Bookmark width={20} height={20} />
+              <span>{progressLabel}</span>
+            </div>
+            <div className="settings-wrap">
+              <button className="round-btn" type="button" aria-label="Pengaturan" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((v) => !v)}>
+                <Icon.Gear width={26} height={26} />
+              </button>
+              {settingsOpen && (
+                <div className="settings-pop">
+                  <button type="button" role="switch" aria-checked={playing} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
+                    <span>{reduced ? "Gerakan dikurangi" : "Animasi"}</span><i className="switch" aria-hidden="true" />
+                  </button>
+                  <button type="button" role="switch" aria-checked={soundEnabled} onClick={toggleSound}>
+                    <span>Suara</span><i className="switch" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
 
         {/* Pembaca layar membaca pesan lewat elemen ini; balon di bawah hanya tampilan. */}
-        <p className="sr-only" role="status" aria-live="polite">{view.message}</p>
+        <p className="sr-only" role="status" aria-live="polite">{view.title ? `${view.title}. ` : ""}{view.message}. {view.hint || ""}</p>
         {/* key membuat animasi "pop" diulang setiap pesan baru muncul. */}
         <div className={`message-bubble pop${view.bubble === "boom" ? " boom" : ""}`} key={`${phase}-${scene.id}`} aria-hidden="true">
-          {view.bubble === "boom" && (
+          {view.bubble === "boom" ? (
             <svg className="boom-burst" viewBox="0 0 100 100" preserveAspectRatio="none">
               <polygon points={BURST_POINTS} fill="#fff" stroke="#4b8fd1" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>
+          ) : null}
+          {view.bubble !== "boom" && view.title && (
+            <h2 className="bubble-title">{view.title} <span className="bubble-heart"><Icon.Heart /></span></h2>
           )}
           <p>
             <span>{chars.slice(0, typed).join("")}</span>
             <span className="ghost">{chars.slice(typed).join("")}</span>
           </p>
+          {view.bubble !== "boom" && <span className="bubble-next"><Icon.ArrowRight width={26} height={26} /></span>}
         </div>
 
         <div className="snoopy-stage" data-animation={view.animation} data-pose={view.pose}>
-          <SceneProps list={view.props} group="stage" />
-          <Snoopy pose={view.pose} held={view.held} backpack={view.backpack} animation={view.animation} />
+          <SceneProps list={view.props} excited={view.animation === "dance" || view.animation === "surprised"} playing={playing} />
+          <SnoopyAnimator animation={view.animation} pose={view.pose} held={view.held} playing={playing} />
           {phase === "flying" && <PaperPlane />}
-          <div className="snoopy-caption">{view.caption || "Snoopy"}</div>
         </div>
 
         <div className="sparkles" aria-hidden="true">
@@ -276,32 +298,34 @@ export default function Story() {
             </span>
           ))}
         </div>
-      </section>
 
-      <section className="controls" aria-label="Kontrol cerita">
-        <div className="control-row">
-          <button className="secondary-btn replay-btn" type="button" onClick={() => { goTo(0); setPhase("story"); }} disabled={busy}>
-            <span aria-hidden="true">↻</span> Replay
+        {/* ---------- Toggle bawah ---------- */}
+        <button className="pill-toggle motion-toggle" type="button" role="switch" aria-checked={playing} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
+          <Icon.Leaf width={20} height={20} />
+          <span>{reduced ? "Gerakan Dikurangi" : playing ? "Animasi Aktif" : "Animasi Mati"}</span>
+          <i className="switch" aria-hidden="true" />
+        </button>
+        <button className={`pill-toggle sound-btn${soundEnabled ? "" : " off"}`} type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
+          <Icon.Music width={20} height={20} />
+          <span>{soundEnabled ? "Suara" : "Senyap"}</span>
+        </button>
+
+        {/* ---------- Dock kontrol ---------- */}
+        <nav className="dock" aria-label="Kontrol cerita">
+          <button className="dock-btn dock-back" type="button" aria-label="Kembali" onClick={goBack} disabled={busy || !inStory || current === 0}>
+            <Icon.ArrowLeft />
           </button>
-          <button className="primary-btn next-round-btn" type="button" onClick={handlePrimary} disabled={busy} aria-label={primaryLabel}>
-            <span aria-hidden="true">{primaryIcon === "→" ? "→" : primaryIcon === "⏩" ? "»" : "✉"}</span>
+          <button className="dock-btn" type="button" aria-label="Replay, ulangi cerita" onClick={() => goTo(0)} disabled={busy}>
+            <Icon.Replay /><span>Replay</span>
           </button>
-          <button className="secondary-btn skip-btn" type="button" onClick={() => {
-            if (typing) { setTyped(chars.length); return; }
-            if (inStory && !isLast) { goTo(current + 1); return; }
-            handlePrimary();
-          }} disabled={busy}>
-            <span aria-hidden="true">⏭</span> Lewati
+          <button className="dock-main" type="button" aria-label={primaryLabel} title={primaryLabel} onClick={handlePrimary} disabled={busy}>
+            {inStory && !isLast ? <Icon.ArrowRight width={38} height={38} strokeWidth={2.6} /> : <Icon.Mail width={34} height={34} />}
           </button>
-        </div>
-        <p className="hint">{view.hint || ""}</p>
+          <button className="dock-btn" type="button" aria-label="Lewati animasi teks" onClick={() => setTyped(chars.length)} disabled={!typingNow}>
+            <Icon.SkipNext /><span>Lewati</span>
+          </button>
+        </nav>
       </section>
-      <button className="motion-toggle floating-pill" type="button" aria-pressed={motionOn && !reduced} disabled={reduced} onClick={() => setMotionOn((v) => !v)}>
-        <span aria-hidden="true">🍃</span> {reduced ? "Gerakan dikurangi" : "Animasi " + (motionOn ? "Aktif" : "Mati")} <span className={`toggle-switch${motionOn && !reduced ? " on" : ""}`} aria-hidden="true"><i /></span>
-      </button>
-      <button className="sound-toggle floating-pill sound-pill" type="button" aria-pressed={soundEnabled} onClick={toggleSound}>
-        <span aria-hidden="true">♫</span> Suara
-      </button>
 
       {phase === "ask" && (
         <Modal labelledBy="askTitle" onClose={() => setPhase("declined")}>
